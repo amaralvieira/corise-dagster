@@ -156,3 +156,6 @@ cython_debug/
 
 # Mac OS
 .DS_Store
+
+#VS Code stuff
+*.code-workspace
