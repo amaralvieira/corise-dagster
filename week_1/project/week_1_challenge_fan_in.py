@@ -77,11 +77,16 @@ def process_data(context, stocks):
               mapping_key=str(i),
               output_name='aggregation')
 
-
 @op(
     ins={"aggregation": In(dagster_type=Aggregation)},
     )
-def put_redis_data(aggregation):
+def process_aggregations(aggregation):
+    return aggregation
+
+@op(
+    ins={"aggregations": In(dagster_type=List[Aggregation])},
+    )
+def put_redis_data(aggregations):
     pass
 
 
@@ -89,4 +94,5 @@ def put_redis_data(aggregation):
 def week_1_pipeline():
     stocks = get_s3_data()
     aggregation = process_data(stocks)
-    aggregation.map(put_redis_data)
+    aggregations = aggregation.map(process_aggregations)
+    put_redis_data(aggregations.collect())
