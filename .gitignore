@@ -159,6 +159,7 @@ cython_debug/
 
 #VS Code stuff
 *.code-workspace
+.vscode/
 
 #Reviews of peer projects
 **/*_peer_review_*.py
