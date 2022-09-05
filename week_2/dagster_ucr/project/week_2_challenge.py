@@ -36,11 +36,12 @@ def insert_dbt_data(context, table_name: String):
 
     context.log.info("Batch inserted")
 
-
 @graph
 def dbt():
-    pass
-
+    table = create_dbt_table()
+    populate = insert_dbt_data(table)
+    run = dbt_run_op(start_after=populate)
+    dbt_test_op(run)
 
 docker = {
     "resources": {
