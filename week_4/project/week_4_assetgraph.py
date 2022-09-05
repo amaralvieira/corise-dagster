@@ -67,11 +67,8 @@ docker = {
     },
     "ops": {"get_s3_data": {"config": {"s3_key": "prefix/stock_9.csv"}}},
 }
-#
 
-get_s3_data_docker, process_data_docker, put_redis_data_docker = with_resources([get_s3_data,
-                                                                                 process_data,
-                                                                                 put_redis_data], 
+week_4_asset_docker = with_resources([week_4_asset], 
                                      resource_defs={"s3": s3_resource,
                                                     "redis": redis_resource},
                                      resource_config_by_key=docker)
