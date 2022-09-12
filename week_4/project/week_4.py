@@ -1,17 +1,18 @@
 from typing import List
 
-from dagster import op, graph, In, Out, Nothing, asset, AssetsDefinition, with_resources
+from dagster import AssetIn, Nothing, asset, with_resources
 
 from project.resources import redis_resource, s3_resource
 from project.types import Aggregation, Stock
 
 
-@op(
-    config_schema={"s3_key": str},
-    out={"stocks": Out(dagster_type=List[Stock])},
-    required_resource_keys={'s3'},
-    tags={"kind": "s3"},
+@asset(
     description="Get a list of stocks from an S3 file",
+    compute_kind="s3",
+    required_resource_keys={'s3'},
+    config_schema={"s3_key": str},
+    dagster_type=List[Stock],
+    group_name='corise'
 )
 def get_s3_data(context):
 
@@ -21,32 +22,26 @@ def get_s3_data(context):
     return [Stock.from_list(stock) for stock in stocks]
 
 
-@op(ins={"stocks": In(dagster_type=List[Stock])},
-    out={"aggregation": Out(dagster_type=Aggregation)},
-    tags={"kind": "python"},
-    description="Determine the Stock with the greatest high value",)
+@asset(ins={"stocks": AssetIn('get_s3_data')},
+       dagster_type=Aggregation,
+       compute_kind= "python",
+       description="Determine the Stock with the greatest high value",
+       group_name='corise')
 def process_data(stocks):
     
     hs = sorted(stocks, key=lambda x: x.high, reverse=True)[0]
 
     return Aggregation(date=hs.date, high=hs.high)
 
-@op(ins={"aggregation": In(dagster_type=Aggregation)},
-    required_resource_keys={'redis'},
-    tags={"kind": "redis"},
-    description="Upload aggregations to Redis",)
-def put_redis_data(context, aggregation):
+@asset(ins={"highest_stock": AssetIn('process_data')},
+        required_resource_keys={'redis'},
+        compute_kind="redis",
+        description="Upload aggregations to Redis",
+        group_name='corise')
+def put_redis_data(context, highest_stock):
 
     redis = context.resources.redis
-    redis.put_data(str(aggregation.date), str(aggregation.high))
-
-@graph
-def week_4_graph():
-    stocks = get_s3_data()
-    aggregation = process_data(stocks)
-    put_redis_data(aggregation)
-
-week_4_asset = AssetsDefinition.from_graph(week_4_graph)
+    redis.put_data(str(highest_stock.date), str(highest_stock.high))
 
 docker = {
     "resources": {
@@ -69,9 +64,9 @@ docker = {
 }
 #
 
-get_s3_data_docker, process_data_docker, put_redis_data_docker = with_resources([get_s3_data,
-                                                                                 process_data,
-                                                                                 put_redis_data], 
+assets_with_resources = with_resources([get_s3_data, process_data, put_redis_data], 
                                      resource_defs={"s3": s3_resource,
                                                     "redis": redis_resource},
-                                     resource_config_by_key=docker)
+                                     resource_config_by_key=docker['resources'])
+
+get_s3_data_docker, process_data_docker, put_redis_data_docker = assets_with_resources

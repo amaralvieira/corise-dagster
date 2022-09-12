@@ -4,8 +4,7 @@ from project.week_4 import (
     process_data_docker,
     put_redis_data_docker
 )
-from project.week_4_assetgraph import week_4_asset_docker
 
 @repository
 def repo():
-    return [get_s3_data_docker, process_data_docker, put_redis_data_docker, week_4_asset_docker]
+    return [get_s3_data_docker, process_data_docker, put_redis_data_docker]
